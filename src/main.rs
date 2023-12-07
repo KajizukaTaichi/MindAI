@@ -26,16 +26,15 @@ struct Logic {
     word: String,
     mean: String,
     emotion: Emotion,
-    stimulation: u8,
 }
 
 /// 感情
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 enum Emotion {
-    Happy,
-    Angry,
-    Sad,
-    Normal,
+    Happy(usize),
+    Angry(usize),
+    Sad(usize),
+    Normal(usize),
 }
 
 /// 能力
@@ -59,25 +58,29 @@ impl Ability for Brain {
                 Logic {
                     word: "バカ".to_string(),
                     mean: "頭が悪い".to_string(),
-                    emotion: Emotion::Angry,
-                    stimulation: 100,
+                    emotion: Emotion::Angry(85),
                 },
                 Logic {
                     word: "天才".to_string(),
                     mean: "優れている".to_string(),
-                    emotion: Emotion::Happy,
-                    stimulation: 100,
+                    emotion: Emotion::Happy(100),
                 },
             ],
-            emotion: Emotion::Normal,
+            emotion: Emotion::Normal(0),
         }
     }
 
     /// 記憶を思い出す
     fn remember(&mut self, word: String) -> Logic {
         for item in self.memory.clone() {
-            if word.contains(&item.word) && item.stimulation >= 50 {
-                self.emotion = item.emotion;
+            if word.contains(&item.word) {
+                match (self.emotion, item.emotion) {
+                    (Emotion::Happy(i), Emotion::Happy(j)) => {self.emotion =  Emotion::Happy(i + j)},
+                    (Emotion::Angry(i), Emotion::Angry(j)) => {self.emotion =  Emotion::Angry(i + j)},
+                    (Emotion::Sad(i), Emotion::Sad(j)) => {self.emotion =  Emotion::Sad(i + j)},
+                    _ => self.emotion = item.emotion
+                };
+
                 return item;
             }
         }
@@ -87,31 +90,35 @@ impl Ability for Brain {
 
     /// 学習
     fn study(&mut self, word: String) {
+        let mean = input("どういう意味なの？");
+        let binding = input("どういう感情なの？");
+    let emo = binding.as_str();
+        let st = input("どんくらい刺激があるの？").parse().unwrap_or(50);
         self.memory.push(Logic {
             word,
-            mean: input("どういう意味なの？"),
-            emotion: match input("どういう感情なの？").as_str() {
-                "幸せ" => Emotion::Happy,
-                "怒り" => Emotion::Angry,
-                "悲しい" => Emotion::Sad,
-                _ => Emotion::Normal,
+            mean,
+            emotion: match emo {
+                "幸せ" => Emotion::Happy(st),
+                "怒り" => Emotion::Angry(st),
+                "悲しい" => Emotion::Sad(st),
+                _ => Emotion::Normal(st),
             },
-            stimulation: input("どんくらい刺激があるの？").parse().unwrap_or(50),
         })
     }
 
+    /// ユーザーとやりとり
     fn communication(&mut self) {
         let msg: String = input("> ");
         let item = self.remember(msg);
 
         // 感情を表すメッセーッジ
         let emo_msg = match &self.emotion {
-            Emotion::Happy => "ありがとう！",
-            Emotion::Angry => "何なのよっ",
-            Emotion::Sad => "ふん・・",
-            Emotion::Normal => "そうか。",
+            Emotion::Happy(_) => "ありがとう！",
+            Emotion::Angry(_) => "何なのよっ",
+            Emotion::Sad(_) => "ふん・・",
+            Emotion::Normal(_) => "そうか。",
         };
-        println!("{emo_msg} 私、{}の？", item.mean);
+        println!("感情:{:?} {emo_msg} 私、{}の？", self.emotion, item.mean);
         return;
     }
 }
