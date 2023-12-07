@@ -43,6 +43,7 @@ trait Ability {
     fn communication(&mut self);
     fn remember(&mut self, word: String) -> Logic;
     fn study(&mut self, word: String);
+    fn think(&mut self, word: String, mean: String) -> Option<Logic>;
 }
 
 /// 脳
@@ -70,20 +71,35 @@ impl Ability for Brain {
         }
     }
 
-    /// 記憶を思い出す
-    fn remember(&mut self, word: String) -> Logic {
-        for item in self.memory.clone() {
-            if word.contains(&item.word) {
-                match (self.emotion, item.emotion) {
-                    (Emotion::Happy(i), Emotion::Happy(j)) => {self.emotion =  Emotion::Happy(i + j)},
-                    (Emotion::Angry(i), Emotion::Angry(j)) => {self.emotion =  Emotion::Angry(i + j)},
-                    (Emotion::Sad(i), Emotion::Sad(j)) => {self.emotion =  Emotion::Sad(i + j)},
-                    _ => self.emotion = item.emotion
-                };
-
-                return item;
+    // 考える
+    fn think(&mut self, word: String, mean: String) -> Option<Logic> {
+        for item in &self.memory {
+            if mean.contains(&item.word) {
+                return Some(Logic {
+                    word,
+                    ..item.clone()
+                });
             }
         }
+        None
+    }
+
+    /// 記憶を思い出す
+    fn remember(&mut self, word: String) -> Logic {
+        for item in &self.memory {
+            if word.contains(&item.word) {
+                match (self.emotion, item.emotion) {
+                    (Emotion::Happy(i), Emotion::Happy(j)) => self.emotion = Emotion::Happy(i + j),
+                    (Emotion::Angry(i), Emotion::Angry(j)) => self.emotion = Emotion::Angry(i + j),
+                    (Emotion::Sad(i), Emotion::Sad(j)) => self.emotion = Emotion::Sad(i + j),
+                    _ => self.emotion = item.emotion,
+                };
+
+                return item.clone();
+            }
+        }
+
+        // 記憶されていない場合は学習
         self.study(word.clone());
         self.remember(word)
     }
@@ -91,19 +107,25 @@ impl Ability for Brain {
     /// 学習
     fn study(&mut self, word: String) {
         let mean = input("どういう意味なの？");
-        let binding = input("どういう感情なの？");
-    let emo = binding.as_str();
-        let st = input("どんくらい刺激があるの？").parse().unwrap_or(50);
-        self.memory.push(Logic {
-            word,
-            mean,
-            emotion: match emo {
-                "幸せ" => Emotion::Happy(st),
-                "怒り" => Emotion::Angry(st),
-                "悲しい" => Emotion::Sad(st),
-                _ => Emotion::Normal(st),
-            },
-        })
+        let result: Option<Logic> = self.think(word.clone(), mean.clone());
+        match result {
+            Some(i) => self.memory.push(i),
+            None => {
+                let binding = input("どういう感情なの？");
+                let emo = binding.as_str();
+                let st = input("どんくらい刺激があるの？").parse().unwrap_or(50);
+                self.memory.push(Logic {
+                    word,
+                    mean,
+                    emotion: match emo {
+                        "幸せ" => Emotion::Happy(st),
+                        "怒り" => Emotion::Angry(st),
+                        "悲しい" => Emotion::Sad(st),
+                        _ => Emotion::Normal(st),
+                    },
+                });
+            }
+        }
     }
 
     /// ユーザーとやりとり
@@ -112,13 +134,13 @@ impl Ability for Brain {
         let item = self.remember(msg);
 
         // 感情を表すメッセーッジ
-        let emo_msg = match &self.emotion {
-            Emotion::Happy(_) => "ありがとう！",
-            Emotion::Angry(_) => "何なのよっ",
-            Emotion::Sad(_) => "ふん・・",
-            Emotion::Normal(_) => "そうか。",
+        match &self.emotion {
+            Emotion::Happy(i) => println!("感情:幸せ{i} {{ やったあ！ 私、{}んだぜ！", item.mean),
+            Emotion::Angry(i) => {
+                println!("感情:怒り{i} {{ 何なのよっ 私、{}っていうの？", item.mean)
+            }
+            Emotion::Sad(i) => println!("感情:悲しい{i} {{ ふん・・ 私、{}のかい？", item.mean),
+            Emotion::Normal(i) => println!("感情:ふつう{i} {{ そうか 私、{}んだね。", item.mean),
         };
-        println!("感情:{:?} {emo_msg} 私、{}の？", self.emotion, item.mean);
-        return;
     }
 }
