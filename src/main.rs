@@ -93,13 +93,7 @@ impl Brain {
 
     // 考える
     fn think(&mut self, word: String, mean: String) -> Option<Logic> {
-        for item in self
-            .memory
-            .clone()
-            .into_iter()
-            .rev()
-            .collect::<Vec<Logic>>()
-        {
+        for item in &self.memory {
             if mean.contains(&item.word) {
                 return Some(Logic {
                     word,
@@ -110,7 +104,7 @@ impl Brain {
         None
     }
 
-    fn remember(&mut self, subject: String, word: String) -> Logic {
+    fn remember(&mut self, word: String) -> Logic {
         for item in &self.memory {
             if word.contains(&item.word) {
                 // 好感度の計算と更新
@@ -136,7 +130,48 @@ impl Brain {
             }
         }
         self.study(word.clone());
-        let item = self.remember(subject.clone(), word.clone());
+        self.remember(word)
+    }
+
+    fn study(&mut self, word: String) {
+        let mean = input("どういう意味なの？");
+        let result: Option<Logic> = self.think(word.clone(), mean.clone());
+        match result {
+            Some(i) => self.memory.push(i),
+            None => {
+                let binding = input("どういう感情なの？");
+                let emo = binding.as_str();
+                let st = input("どんくらい刺激があるの？").parse().unwrap_or(50);
+                self.memory.push(Logic {
+                    word,
+                    mean,
+                    emotion: match emo {
+                        "幸せ" => Emotion::Happy(st),
+                        "怒り" => Emotion::Angry(st),
+                        "悲しい" => Emotion::Sad(st),
+                        _ => Emotion::Normal(st),
+                    },
+                });
+            }
+        }
+    }
+
+    fn communication(&mut self) {
+        let msg: String = input("> ").trim().to_string();
+        let (subject, msg): (String, String) = match msg.split_once("は") {
+            Some((s, m)) => (s.trim().to_string(), m.trim().to_string()),
+            None => ("".to_string(), msg),
+        };
+        let item = self.remember(msg.clone());
+        self.update_bias(&msg);
+        self.update_belief();
+
+        println!("記憶メモリ");
+        for i in &self.memory {
+            println!("｜{:?}", i);
+        }
+
+        println!("好感度{} - 信念{:?}", self.liking, self.belief);
 
         if subject.contains("俺") || subject.contains("私") || subject.contains("ワイ") {
             if &self.liking > &0 {
@@ -177,8 +212,7 @@ impl Brain {
                     }
                 };
             }
-        } else if subject.contains("あなた") || subject.contains("お前") || subject.contains("君")
-        {
+        } else {
             match &self.emotion {
                 Emotion::Happy(i) => {
                     println!("感情: 幸せ{} {{ やったあ！ 私は{}なんだぜ！", i, item.mean)
@@ -195,58 +229,7 @@ impl Brain {
                     println!("感情: ふつう{} {{ そうか。 私は{}んだね", i, item.mean)
                 }
             };
-        } else {
-            if subject.contains(&item.word) {
-                self.memory.push(Logic {
-                    word: subject.clone(),
-                    mean: word.clone(),
-                    emotion: Emotion::Normal(0),
-                });
-                println!("{{ そうか。 {subject}は{}んだね", item.mean);
-            }
         }
-        self.remember(subject, word)
-    }
-
-    fn study(&mut self, word: String) {
-        let mean = input("どういう意味なの？");
-        let result: Option<Logic> = self.think(word.clone(), mean.clone());
-        match result {
-            Some(i) => self.memory.push(i),
-            None => {
-                let binding = input("どういう感情なの？");
-                let emo = binding.as_str();
-                let st = input("どんくらい刺激があるの？").parse().unwrap_or(50);
-                self.memory.push(Logic {
-                    word,
-                    mean,
-                    emotion: match emo {
-                        "幸せ" => Emotion::Happy(st),
-                        "怒り" => Emotion::Angry(st),
-                        "悲しい" => Emotion::Sad(st),
-                        _ => Emotion::Normal(st),
-                    },
-                });
-            }
-        }
-    }
-
-    fn communication(&mut self) {
-        let msg: String = input("> ").trim().to_string();
-        let (subject, msg): (String, String) = match msg.split_once("は") {
-            Some((s, m)) => (s.trim().to_string(), m.trim().to_string()),
-            None => ("".to_string(), msg),
-        };
-        let item = self.remember(subject.clone(), msg.clone());
-        self.update_bias(&msg);
-        self.update_belief();
-
-        println!("記憶メモリ");
-        for i in &self.memory {
-            println!("｜{:?}", i);
-        }
-
-        println!("好感度{} - 信念{:?}", self.liking, self.belief);
     }
 }
 
