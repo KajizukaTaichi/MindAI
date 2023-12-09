@@ -17,14 +17,14 @@ struct Logic {
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 enum Emotion {
-    Happy(usize),
-    Angry(usize),
-    Sad(usize),
-    Normal(usize),
+    Happy(isize),
+    Angry(isize),
+    Sad(isize),
+    Normal(isize),
 }
 
 impl Emotion {
-    fn get_value(&self) -> usize {
+    fn get_value(&self) -> isize {
         match &self {
             Emotion::Happy(i) => *i,
             Emotion::Angry(i) => *i,
@@ -37,7 +37,7 @@ impl Emotion {
 struct Brain {
     memory: Vec<Logic>,
     emotion: Emotion, // 自分のへ気持ち
-    liking: usize,    // ユーザーへの好感度
+    liking: isize,    // ユーザーへの好感度
     belief: Logic,    // 自分の信念
 }
 
@@ -99,18 +99,18 @@ impl Brain {
         for item in &self.memory {
             if word.contains(&item.word) {
                 // 好感度の計算と更新
-                match &mut self.emotion {
-                    Emotion::Happy(i) => {
+                match (&mut self.emotion, item.emotion) {
+                    (Emotion::Happy(i), Emotion::Happy(_)) => {
                         self.liking += 10;
-                        *i += item.emotion.get_value() / self.liking;
+                        *i += (item.emotion.get_value() as isize) * self.liking;
                     }
-                    Emotion::Angry(i) => {
+                    (Emotion::Angry(i), Emotion::Angry(_)) => {
                         self.liking -= 5;
-                        *i += item.emotion.get_value() / self.liking;
+                        *i += (item.emotion.get_value() as isize) * self.liking;
                     }
-                    Emotion::Sad(i) => {
+                    (Emotion::Sad(i), Emotion::Sad(_)) => {
                         self.liking -= 7;
-                        *i += item.emotion.get_value() / self.liking;
+                        *i += (item.emotion.get_value() as isize) * self.liking;
                     }
                     _ => {
                         self.emotion = item.emotion;
@@ -156,6 +156,7 @@ impl Brain {
         self.update_bias(&msg);
         let item = self.remember(msg);
 
+        print!("好感度{} ", self.liking);
         if subject.contains("俺") || subject.contains("私") || subject.contains("ワイ") {
             if &self.liking > &0 {
                 match &self.emotion {
