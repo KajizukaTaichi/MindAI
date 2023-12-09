@@ -66,6 +66,15 @@ impl Brain {
         }
     }
 
+    /// 信念を更新
+    fn update_belief(&mut self) {
+        for new_belief in &self.memory {
+            if new_belief.emotion.get_value() > self.belief.emotion.get_value() {
+                self.belief = new_belief.clone();
+            }
+        }
+    }
+
     fn update_bias(&mut self, user_belief: &str) {
         if user_belief.contains(&self.belief.word) {
             match &mut self.emotion {
@@ -153,10 +162,17 @@ impl Brain {
             Some((s, m)) => (s.trim().to_string(), m.trim().to_string()),
             None => ("".to_string(), msg),
         };
+        let item = self.remember(msg.clone());
         self.update_bias(&msg);
-        let item = self.remember(msg);
+        self.update_belief();
 
-        print!("好感度{} ", self.liking);
+        println!("記憶メモリ");
+        for i in &self.memory {
+            println!("｜{:?}", i);
+        }
+
+        println!("好感度{} - 信念{:?}", self.liking, self.belief);
+
         if subject.contains("俺") || subject.contains("私") || subject.contains("ワイ") {
             if &self.liking > &0 {
                 match &self.emotion {
